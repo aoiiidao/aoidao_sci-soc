@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Study Room</title>
+<style>
+:root {
+  --blue: #8bc9ee;
+  --blue-light: #eaf7ff;
+  --green: #b9e5c5;
+  --yellow: #fff0a8;
+  --pink: #f8dce8;
+  --purple: #ded8ff;
+  --text: #394454;
+  --white: #fff;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #f6f8fc;
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+}
+header {
+  background: var(--blue-light);
+  padding: 24px 16px;
+  text-align: center;
+}
+header h1 { margin: 0; font-size: 27px; }
+header p { margin-bottom: 0; }
+nav {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: white;
+  flex-wrap: wrap;
+}
+button, input, select, textarea { font: inherit; }
+button {
+  border: none;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--blue);
+  color: #243c50;
+  cursor: pointer;
+  font-weight: 650;
+}
+button:focus-visible, input:focus-visible, select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #547eb8;
+  outline-offset: 2px;
+}
+button.secondary { background: #edf0f6; }
+button.danger { background: #ffe0e0; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+main { max-width: 760px; margin: auto; padding: 20px 14px 50px; }
+.panel {
+  background: white;
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 3px 12px #3448660a;
+}
+h2 { font-size: 21px; margin-top: 0; }
+h3 { font-size: 17px; }
+label { display: block; font-weight: 600; margin: 13px 0 6px; }
+input, select, textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d8deea;
+  border-radius: 10px;
+  background: white;
+  color: var(--text);
+}
+textarea { min-height: 80px; resize: vertical; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  gap: 12px;
+}
+.subject-card {
+  text-align: left;
+  min-height: 95px;
+  background: var(--blue-light);
+}
+.subject-card .count { display: block; font-size: 13px; margin-top: 8px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.row > button { flex: 1; }
+.small { font-size: 13px; color: #6e7888; line-height: 1.6; }
+.question-choice {
+  display: block;
+  width: 100%;
+  margin: 9px 0;
+  text-align: left;
+  background: #f0f4ff;
+  white-space: normal;
+}
+.question-choice.correct { background: #d9f4e2; }
+.question-choice.wrong { background: #ffe1e1; }
+.hidden { display: none !important; }
+.notice { background: #fff6d8; padding: 12px; border-radius: 10px; line-height: 1.6; }
+.item {
+  border: 1px solid #e6e9f0;
+  padding: 13px;
+  border-radius: 12px;
+  margin: 10px 0;
+  overflow-wrap: anywhere;
+}
+.item p { white-space: pre-wrap; }
+footer { text-align: center; padding: 20px; color: #818b9a; font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📚 Study Room</h1>
+  <p>自分でつくる、自分だけの勉強室。</p>
+</header>
+
+<nav>
+  <button onclick="showPage('home')">🏠 ホーム</button>
+  <button onclick="showPage('admin')">🔐 製作者ページ</button>
+</nav>
+
+<main>
+  <section id="homePage">
+    <div class="panel">
+      <h2>今日も勉強しよう！</h2>
+      <p>教科を選んで問題に挑戦しよう。</p>
+      <div class="grid" id="subjectCards"></div>
+      <p id="emptyHome" class="small">まだ教科がありません。製作者ページから追加できます。</p>
+    </div>
+    <div id="quizPanel" class="panel hidden">
+      <h2 id="quizTitle">問題</h2>
+      <div id="quizContent"></div>
+      <div class="row">
+        <button class="secondary" onclick="quitQuiz()">教科一覧へ戻る</button>
+        <button id="nextQuestion" class="hidden" onclick="nextQuestion()">次の問題 →</button>
+      </div>
+    </div>
+    <div id="statsPanel" class="panel">
+      <h2>📊 学習記録</h2>
+      <p id="statsText">このブラウザで解いた問題の記録が表示されます。</p>
+      <button class="secondary" onclick="resetStats()">学習記録をリセット</button>
+    </div>
+  </section>
+
+  <section id="adminPage" class="hidden">
+    <div id="loginPanel" class="panel">
+      <h2>🔐 製作者ログイン</h2>
+      <p>製作者だけが問題・教科を編集できます。</p>
+      <div class="notice small">
+        初回はパスワードを設定してください。忘れないように安全な場所に保管してください。
+      </div>
+      <form id="setupForm" class="hidden">
+        <label for="newPassword">新しいパスワード</label>
+        <input id="newPassword" type="password" minlength="8" autocomplete="new-password" required>
+        <label for="confirmPassword">パスワード（確認）</label>
+        <input id="confirmPassword" type="password" minlength="8" autocomplete="new-password" required>
+        <button style="margin-top:14px;width:100%">パスワードを設定</button>
+      </form>
+      <form id="loginForm">
+        <label for="password">パスワード</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+        <button style="margin-top:14px;width:100%">ログイン</button>
+      </form>
+      <p id="loginMessage" class="small" aria-live="polite"></p>
+    </div>
+
+    <div id="adminTools" class="hidden">
+      <div class="panel">
+        <h2>⚙️ 教科の管理</h2>
+        <p class="small">好きな教科を追加できます。理科・社会の分野別など、自由に作成できます。</p>
+        <form id="subjectForm">
+          <label for="subjectName">新しい教科名・分野名</label>
+          <input id="subjectName" maxlength="40" placeholder="例：歴史、生物、英単語" required>
+          <button style="margin-top:12px;width:100%">教科を追加</button>
+        </form>
+        <div id="subjectManageList"></div>
+      </div>
+
+      <div class="panel">
+        <h2>✏️ 問題を作成</h2>
+        <form id="questionForm">
+          <label for="questionSubject">登録する教科</label>
+          <select id="questionSubject" required></select>
+
+          <label for="questionText">問題文</label>
+          <textarea id="questionText" maxlength="2000" placeholder="問題を入力" required></textarea>
+
+          <label for="questionType">問題形式</label>
+          <select id="questionType">
+            <option value="choice">四択問題</option>
+            <option value="text">記述問題（答えを表示）</option>
+          </select>
+
+          <div id="choiceFields">
+            <label for="choice0">選択肢 1</label>
+            <input id="choice0" maxlength="300" placeholder="選択肢1">
+            <label for="choice1">選択肢 2</label>
+            <input id="choice1" maxlength="300" placeholder="選択肢2">
+            <label for="choice2">選択肢 3</label>
+            <input id="choice2" maxlength="300" placeholder="選択肢3">
+            <label for="choice3">選択肢 4</label>
+            <input id="choice3" maxlength="300" placeholder="選択肢4">
+            <label for="correctChoice">正解の選択肢</label>
+            <select id="correctChoice">
+              <option value="0">選択肢 1</option>
+              <option value="1">選択肢 2</option>
+              <option value="2">選択肢 3</option>
+              <option value="3">選択肢 4</option>
+            </select>
+          </div>
+
+          <label for="correctText">正解・模範解答</label>
+          <textarea id="correctText" maxlength="2000" placeholder="正解や模範解答を入力" required></textarea>
+
+          <label for="explanation">解説（任意）</label>
+          <textarea id="explanation" maxlength="2000" placeholder="解説を入力"></textarea>
+
+          <div class="row">
+            <button type="submit" id="saveQuestion">問題を追加</button>
+            <button type="button" class="secondary hidden" id="cancelEdit" onclick="cancelEdit()">編集をキャンセル</button>
+          </div>
+        </form>
+        <p id="questionMessage" class="small" aria-live="polite"></p>
+      </div>
+
+      <div class="panel">
+        <h2>📋 作成した問題</h2>
+        <label for="filterSubject">教科で絞り込む</label>
+        <select id="filterSubject"></select>
+        <div id="questionManageList"></div>
+      </div>
+
+      <div class="panel">
+        <h2>💾 データの保存・移行</h2>
+        <p class="small">この試作品のデータは、このブラウザ内に保存されます。サイトを開く端末やブラウザを変える場合は、バックアップを利用してください。</p>
+        <div class="row">
+          <button onclick="exportData()">バックアップを保存</button>
+          <button class="secondary" onclick="document.getElementById('importFile').click()">バックアップを読み込む</button>
+          <input id="importFile" class="hidden" type="file" accept=".json,application/json">
+        </div>
+        <p id="dataMessage" class="small" aria-live="polite"></p>
+        <button class="danger" style="width:100%;margin-top:18px" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>Study Room · 自分専用の問題集</footer>
+
+<script>
+const DATA_KEY = "study_room_data_v1";
+const PASS_KEY = "study_room_password_hash_v1";
+const STATS_KEY = "study_room_stats_v1";
+
+let data = { subjects: [], questions: [] };
+let stats = { answered: 0, correct: 0 };
+let quiz = [];
+let quizIndex = 0;
+let quizCorrect = 0;
+let quizAnswered = false;
+let editingId = null;
+let loggedIn = false;
+let sessionTimer = null;
+
+const $ = id => document.getElementById(id);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+
+function load() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DATA_KEY));
+    if (saved && Array.isArray(saved.subjects) && Array.isArray(saved.questions)) {
+      data = saved;
+    }
+  } catch (_) {}
+  try {
+    const savedStats = JSON.parse(localStorage.getItem(STATS_KEY));
+    if (savedStats && Number.isFinite(savedStats.answered) && Number.isFinite(savedStats.correct)) {
+      stats = savedStats;
+    }
+  } catch (_) {}
+}
+function saveData() {
+  try {
+    localStorage.setItem(DATA_KEY, JSON.stringify(data));
+    return true;
+  } catch (_) {
+    alert("保存できませんでした。ブラウザの保存容量や設定を確認してください。");
+    return false;
+  }
+}
+function saveStats() {
+  try { localStorage.setItem(STATS_KEY, JSON.stringify(stats)); } catch (_) {}
+}
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, c => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  })[c]);
+}
+function showPage(page) {
+  $("homePage").classList.toggle("hidden", page !== "home");
+  $("adminPage").classList.toggle("hidden", page !== "admin");
+  if (page === "admin") updateLoginView();
+  if (page === "home") renderHome();
+}
+function updateLoginView() {
+  const configured = !!localStorage.getItem(PASS_KEY);
+  $("setupForm").classList.toggle("hidden", configured);
+  $("loginForm").classList.toggle("hidden", !configured || loggedIn);
+  $("loginPanel").classList.toggle("hidden", loggedIn);
+  $("adminTools").classList.toggle("hidden", !loggedIn);
+  if (loggedIn) renderAdmin();
+}
+async function hashPassword(password) {
+  if (!crypto.subtle) throw new Error("この環境では安全なパスワード設定機能を使えません。HTTPSのサイトで開いてください。");
+  const bytes = new TextEncoder().encode(password);
+  const hash = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+$("setupForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const p = $("newPassword").value;
+  if (p.length < 8) return;
+  if (p !== $("confirmPassword").value) {
+    $("loginMessage").textContent = "確認用パスワードが一致しません。";
+    return;
+  }
+  try {
+    localStorage.setItem(PASS_KEY, await hashPassword(p));
+    loggedIn = true;
+    $("loginMessage").textContent = "";
+    $("setupForm").reset();
+    updateLoginView();
+  } catch (err) { $("loginMessage").textContent = err.message; }
+});
+$("loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  try {
+    const attempt = await hashPassword($("password").value);
+    if (attempt === localStorage.getItem(PASS_KEY)) {
+      loggedIn = true;
+      $("loginMessage").textContent = "";
+      $("loginForm").reset();
+      updateLoginView();
+    } else {
+      $("loginMessage").textContent = "パスワードが違います。";
+    }
+  } catch (err) { $("loginMessage").textContent = err.message; }
+});
+function logout() {
+  loggedIn = false;
+  editingId = null;
+  $("questionForm").reset();
+  $("choiceFields").classList.remove("hidden");
+  $("cancelEdit").classList.add("hidden");
+  updateLoginView();
+}
+function requireAdmin() {
+  if (!loggedIn) throw new Error("ログインしてください。");
+}
+$("subjectForm").addEventListener("submit", e => {
+  e.preventDefault();
+  try { requireAdmin(); } catch (err) { alert(err.message); return; }
+  const name = $("subjectName").value.trim();
+  if (!name) return;
+  if (data.subjects.some(s => s.name.toLowerCase() === name.toLowerCase())) {
+    alert("同じ名前の教科がすでにあります。");
+    return;
+  }
+  data.subjects.push({ id: uid(), name });
+  if (saveData()) {
+    $("subjectForm").reset();
+    renderAdmin();
+    renderHome();
+  }
+});
+function renderAdmin() {
+  if (!loggedIn) return;
+  const options = data.subjects.map(s => `<option value="${escapeHTML(s.id)}">${escapeHTML(s.name)}</option>`).join("");
+  $("questionSubject").innerHTML = options || '<option value="">先に教科を追加してください</option>';
+  const previous = $("filterSubject").value;
+  $("filterSubject").innerHTML = '<option value="all">すべての教科</option>' + options;
+  if (previous === "all" || data.subjects.some(s => s.id === previous)) $("filterSubject").value = previous;
+  $("subjectManageList").innerHTML = data.subjects.length ? data.subjects.map(s => {
+    const count = data.questions.filter(q => q.subjectId === s.id).length;
+    return `<div class="item"><strong>${escapeHTML(s.name)}</strong><p class="small">${count} 問</p><button class="danger" onclick="deleteSubject('${s.id}')">教科を削除</button></div>`;
+  }).join("") : '<p class="small">まだ教科がありません。</p>';
+  renderQuestionList();
+}
+function deleteSubject(id) {
+  requireAdmin();
+  const s = data.subjects.find(x => x.id === id);
+  if (!s) return;
+  if (!confirm(`「${s.name}」と、この教科の問題をすべて削除しますか？`)) return;
+  data.subjects = data.subjects.filter(x => x.id !== id);
+  data.questions = data.questions.filter(q => q.subjectId !== id);
+  saveData(); renderAdmin(); renderHome();
+}
+$("questionType").addEventListener("change", () => {
+  $("choiceFields").classList.toggle("hidden", $("questionType").value !== "choice");
+  $("correctText").required = $("questionType").value === "text";
+});
+$("questionForm").addEventListener("submit", e => {
+  e.preventDefault();
+  try { requireAdmin(); } catch (err) { alert(err.message); return; }
+  const subjectId = $("questionSubject").value;
+  if (!data.subjects.some(s => s.id === subjectId)) {
+    $("questionMessage").textContent = "先に教科を追加してください。";
+    return;
+  }
+  const type = $("questionType").value;
+  const questionText = $("questionText").value.trim();
+  const correctText = $("correctText").value.trim();
+  const explanation = $("explanation").value.trim();
+  if (!questionText || !correctText) return;
+  let choices = [];
+  let answer = 0;
+  if (type === "choice") {
+    choices = [0,1,2,3].map(i => $("choice" + i).value.trim());
+    if (choices.some(c => !c)) {
+      $("questionMessage").textContent = "4つの選択肢をすべて入力してください。";
+      return;
+    }
+    answer = Number($("correctChoice").value);
+    if (new Set(choices).size !== 4) {
+      $("questionMessage").textContent = "選択肢はそれぞれ違う内容にしてください。";
+      return;
+    }
+  }
+  const item = { id: editingId || uid(), subjectId, type, question: questionText, choices, answer, correctText, explanation };
+  if (editingId) {
+    const index = data.questions.findIndex(q => q.id === editingId);
+    if (index >= 0) data.questions[index] = item;
+  } else {
+    data.questions.push(item);
+  }
+  if (saveData()) {
+    editingId = null;
+    $("questionForm").reset();
+    $("choiceFields").classList.remove("hidden");
+    $("cancelEdit").classList.add("hidden");
+    $("saveQuestion").textContent = "問題を追加";
+    $("questionMessage").textContent = "保存しました！";
+    renderAdmin(); renderHome();
+  }
+});
+function editQuestion(id) {
+  requireAdmin();
+  const q = data.questions.find(x => x.id === id);
+  if (!q) return;
+  editingId = id;
+  $("questionSubject").value = q.subjectId;
+  $("questionText").value = q.question;
+  $("questionType").value = q.type;
+  $("choiceFields").classList.toggle("hidden", q.type !== "choice");
+  [0,1,2,3].forEach(i => $("choice" + i).value = q.choices[i] || "");
+  $("correctChoice").value = String(q.answer);
+  $("correctText").value = q.correctText;
+  $("explanation").value = q.explanation || "";
+  $("saveQuestion").textContent = "変更を保存";
+  $("cancelEdit").classList.remove("hidden");
+  $("questionForm").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function cancelEdit() {
+  editingId = null;
+  $("questionForm").reset();
+  $("choiceFields").classList.remove("hidden");
+  $("cancelEdit").classList.add("hidden");
+  $("saveQuestion").textContent = "問題を追加";
+  $("questionMessage").textContent = "";
+}
+function deleteQuestion(id) {
+  requireAdmin();
+  if (!confirm("この問題を削除しますか？")) return;
+  data.questions = data.questions.filter(q => q.id !== id);
+  saveData(); renderAdmin(); renderHome();
+}
+$("filterSubject").addEventListener("change", renderQuestionList);
+function renderQuestionList() {
+  if (!loggedIn) return;
+  const filter = $("filterSubject").value;
+  const list = data.questions.filter(q => filter === "all" || q.subjectId === filter);
+  $("questionManageList").innerHTML = list.length ? list.map(q => {
+    const s = data.subjects.find(x => x.id === q.subjectId);
+    return `<div class="item"><strong>${escapeHTML(s ? s.name : "未分類")}</strong><p>${escapeHTML(q.question)}</p><p class="small">形式：${q.type === "choice" ? "四択" : "記述"}｜正解：${escapeHTML(q.correctText)}</p><div class="row"><button onclick="editQuestion('${q.id}')">編集</button><button class="danger" onclick="deleteQuestion('${q.id}')">削除</button></div></div>`;
+  }).join("") : '<p class="small">問題がありません。上のフォームから作成してください。</p>';
+}
+function renderHome() {
+  const cards = $("subjectCards");
+  cards.innerHTML = data.subjects.map((s,i) => {
+    const colors = ["#eaf7ff","#e8f7ec","#fff6d9","#fceaf2","#efecff"];
+    const count = data.questions.filter(q => q.subjectId === s.id).length;
+    return `<button class="subject-card" style="background:${colors[i % colors.length]}" onclick="startQuiz('${s.id}')">${escapeHTML(s.name)}<span class="count">${count} 問　›</span></button>`;
+  }).join("");
+  $("emptyHome").classList.toggle("hidden", data.subjects.length > 0);
+  $("statsText").textContent = `回答した問題：${stats.answered}問　／　正解：${stats.correct}問` + (stats.answered ? `　／　正答率：${Math.round(stats.correct / stats.answered * 100)}%` : "");
+}
+function startQuiz(subjectId) {
+  const available = data.questions.filter(q => q.subjectId === subjectId);
+  if (!available.length) { alert("この教科にはまだ問題がありません。"); return; }
+  quiz = available.slice().sort(() => Math.random() - 0.5);
+  quizIndex = 0; quizCorrect = 0;
+  $("quizPanel").classList.remove("hidden");
+  $("quizTitle").textContent = (data.subjects.find(s => s.id === subjectId)?.name || "勉強") + "の問題";
+  $("quizPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+  showQuizQuestion();
+}
+function showQuizQuestion() {
+  quizAnswered = false;
+  const q = quiz[quizIndex];
+  $("nextQuestion").classList.add("hidden");
+  let html = `<p class="small">${quizIndex + 1} / ${quiz.length} 問</p><h3>${escapeHTML(q.question)}</h3>`;
+  if (q.type === "choice") {
+    html += q.choices.map((c,i) => `<button class="question-choice" data-index="${i}">${escapeHTML(c)}</button>`).join("");
+  } else {
+    html += '<button id="showAnswer">答えを表示する</button><div id="writtenAnswer" class="hidden item"></div>';
+  }
+  html += '<p id="quizFeedback" aria-live="polite"></p>';
+  $("quizContent").innerHTML = html;
+  if (q.type === "choice") {
+    $("quizContent").querySelectorAll("[data-index]").forEach(btn => {
+      btn.addEventListener("click", () => answerChoice(Number(btn.dataset.index)));
+    });
+  } else {
+    $("showAnswer").addEventListener("click", () => {
+      if (quizAnswered) return;
+      quizAnswered = true;
+      stats.answered++; saveStats(); renderHome();
+      $("writtenAnswer").innerHTML = `<strong>正解・模範解答</strong><p>${escapeHTML(q.correctText)}</p>${q.explanation ? `<p>${escapeHTML(q.explanation)}</p>` : ""}`;
+      $("writtenAnswer").classList.remove("hidden");
+      $("showAnswer").disabled = true;
+      $("nextQuestion").classList.remove("hidden");
+    });
+  }
+}
+function answerChoice(index) {
+  if (quizAnswered) return;
+  quizAnswered = true;
+  const q = quiz[quizIndex];
+  const isCorrect = index === q.answer;
+  stats.answered++;
+  if (isCorrect) { stats.correct++; quizCorrect++; quizCorrect = Math.min(quizCorrect, quiz.length); }
+  saveStats(); renderHome();
+  $("quizContent").querySelectorAll("[data-index]").forEach(btn => {
+    btn.disabled = true;
+    const i = Number(btn.dataset.index);
+    if (i === q.answer) btn.classList.add("correct");
+    if (i === index && !isCorrect) btn.classList.add("wrong");
+  });
+  $("quizFeedback").textContent = (isCorrect ? "正解！ " : "不正解。正解は「" + q.choices[q.answer] + "」。 ") + (q.explanation || "");
+  $("nextQuestion").classList.remove("hidden");
+}
+function nextQuestion() {
+  if (quizIndex + 1 < quiz.length) {
+    quizIndex++; showQuizQuestion();
+  } else {
+    $("quizContent").innerHTML = `<h3>おつかれさま！</h3><p>${quiz.length}問中、${quizCorrect}問正解！</p><p>また挑戦してみよう。</p>`;
+    $("nextQuestion").classList.add("hidden");
+  }
+}
+function quitQuiz() { $("quizPanel").classList.add("hidden"); }
+function resetStats() {
+  if (!confirm("学習記録をリセットしますか？")) return;
+  stats = { answered: 0, correct: 0 };
+  saveStats(); renderHome();
+}
+function exportData() {
+  requireAdmin();
+  const payload = { format: "study-room-backup-v1", data, stats };
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "study-room-backup.json"; a.click();
+  URL.revokeObjectURL(url);
+  $("dataMessage").textContent = "バックアップファイルを作成しました。";
+}
+$("importFile").addEventListener("change", async e => {
+  try {
+    requireAdmin();
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) throw new Error("ファイルが大きすぎます。");
+    const parsed = JSON.parse(await file.text());
+    if (parsed.format !== "study-room-backup-v1" || !parsed.data ||
+        !Array.isArray(parsed.data.subjects) || !Array.isArray(parsed.data.questions)) {
+      throw new Error("対応していないバックアップファイルです。");
+    }
+    if (!confirm("現在の教科・問題をバックアップの内容に置き換えますか？")) return;
+    const subjectIds = new Set(parsed.data.subjects.map(s => s.id));
+    if (!parsed.data.subjects.every(s => typeof s.id === "string" && typeof s.name === "string") ||
+        !parsed.data.questions.every(q => typeof q.id === "string" && subjectIds.has(q.subjectId) &&
+        typeof q.question === "string" && ["choice","text"].includes(q.type) &&
+        typeof q.correctText === "string" &&
+        (q.type !== "choice" || (Array.isArray(q.choices) && q.choices.length === 4 && Number.isInteger(q.answer) && q.answer >= 0 && q.answer < 4)))) {
+      throw new Error("バックアップのデータ形式が正しくありません。");
+    }
+    data = parsed.data;
+    saveData(); renderAdmin(); renderHome();
+    $("dataMessage").textContent = "読み込みました。";
+  } catch (err) {
+    $("dataMessage").textContent = err.message || "読み込みに失敗しました。";
+  } finally { e.target.value = ""; }
+});
+load();
+renderHome();
+updateLoginView();
+</script>
+</body>
+</html>
